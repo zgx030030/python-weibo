@@ -49,34 +49,40 @@ def autoPost(t, c):
 	#开始发送
 	r = api.post.t__add(format="json", content=c.decode('gbk'), clientip='222.173.94.214')
 	if r.errcode==0:
-		print '定时发送成功！'.decode('utf-8').encode(coding)
+		logging.info('定时发送成功！')
 	else:
-		print '发送失败 错误代码：'.decode('utf-8').encode(coding), r.errcode
+		logging.info('发送失败'+str(r.errcode))
 
 #检查任务时间线程
 def threading_do_task():
 	global flag
 	while True:
-		logging.debug('in threading....')
 		if len(autoPostTaskListT) ==0:
 			flag = False
 			break
 		min_t = min(autoPostTaskListT)
 		if int(time.time())<min_t:
-			time.sleep(1)
+			sleepSecond = min_t-int(time.time())
+			logging.info('sleep '+ str(sleepSecond) + '秒...')
+			time.sleep(sleepSecond)
+			logging.info('sleep end')
 			continue
-		logging.debug('min_t:'+str(min_t))
 		for i in xrange(autoPostTaskListT.count(min_t)):
 			index = autoPostTaskListT.index(min_t)
-			logging.debug('index:'+str(index) )
-			logging.debug( '执行发送:'+autoPostTaskListT[index]+"\t"+autoPostTaskListC[index])
+			autoPost(autoPostTaskListT[index], autoPostTaskListC[index])
+			logging.info('执行发送:'+str(autoPostTaskListT[index])+"\t"+autoPostTaskListC[index])
 			del autoPostTaskListT[index]
 			del autoPostTaskListC[index]
-		time.sleep(1)
 #添加定时任务
 def add_auto_post_task(t,c):
 		global flag
 		p = '%Y-%m-%d/%H:%M:%S'
+		if re.search('^\d{2}:\d{2}:\d{2}$',t):
+			t = time.strftime('%Y-%m-%d/') + t
+		if not re.search('^\d{4}-\d{2}-\d{2}/\d{2}:\d{2}:\d{2}', t):
+			logging.debug('日期格式错误')
+			return False
+
 		t = int(time.mktime(time.strptime(t, p)))
 		autoPostTaskListT.append(t)
 		autoPostTaskListC.append(c)
