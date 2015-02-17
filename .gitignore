@@ -1,2 +1,4 @@
 #python ╨Жбтlogнд╪Ч
 *.log
+*.pyc
+*.py~

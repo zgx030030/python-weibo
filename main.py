@@ -9,7 +9,7 @@ import sys
 import re
 import os
 from tweibo import *
-
+from lib import AutomaticPost
 #日志
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',datefmt='%a, %d %b %Y %H:%M:%S',filename='myapp.log',filemode='w')
 
@@ -36,77 +36,6 @@ def getAPI():
 	oauth.set_openid(OPENID)
 	api = API(oauth)
 	return api
-#自动发布执行的方法
-#t 定时时间戳  c 发布内容
-def autoPost(t, c):
-	while int(time.time())<t:
-		time.sleep(1)
-	oauth = OAuth2Handler()
-	oauth.set_app_key_secret(APP_KEY, APP_SECRET, CALLBACK_URL)
-	oauth.set_access_token(ACCESS_TOKEN)
-	oauth.set_openid(OPENID)
-	api = API(oauth)
-	#开始发送
-	r = api.post.t__add(format="json", content=c.decode('gbk'), clientip='222.173.94.214')
-	if r.errcode==0:
-		logging.info('定时发送成功！')
-	else:
-		logging.info('发送失败'+str(r.errcode))
-
-#检查任务时间线程
-def threading_do_task():
-	global flag
-	while True:
-		if len(autoPostTaskListT) ==0:
-			flag = False
-			break
-		min_t = min(autoPostTaskListT)
-		if int(time.time())<min_t:
-			sleepSecond = min_t-int(time.time())
-			logging.info('sleep '+ str(sleepSecond) + '秒...')
-			time.sleep(sleepSecond)
-			logging.info('sleep end')
-			continue
-		for i in xrange(autoPostTaskListT.count(min_t)):
-			index = autoPostTaskListT.index(min_t)
-			autoPost(autoPostTaskListT[index], autoPostTaskListC[index])
-			logging.info('执行发送:'+str(autoPostTaskListT[index])+"\t"+autoPostTaskListC[index])
-			del autoPostTaskListT[index]
-			del autoPostTaskListC[index]
-#添加定时任务
-def add_auto_post_task(t,c):
-		global flag
-		p = '%Y-%m-%d/%H:%M:%S'
-		if re.search('^\d{2}:\d{2}:\d{2}$',t):
-			t = time.strftime('%Y-%m-%d/') + t
-		if not re.search('^\d{4}-\d{2}-\d{2}/\d{2}:\d{2}:\d{2}', t):
-			logging.debug('日期格式错误')
-			return False
-
-		t = int(time.mktime(time.strptime(t, p)))
-		autoPostTaskListT.append(t)
-		autoPostTaskListC.append(c)
-		if not flag:
-			flag = True
-			threading.Thread(target=threading_do_task, args=()).start()
-		return True
-#删除定时任务
-def del_auto_post_task(i):
-	try:
-		i = int(i)
-		del autoPostTaskListT[i]
-		del autoPostTaskListC[i]
-		return True
-	except:
-		return False
-#列出当前定时任务列表
-def show_auto_post_task():
-	try:
-		for i in xrange(len(autoPostTaskListT)):
-			print i,"\t",autoPostTaskListT[i], "\t", autoPostTaskListC[i]
-		return True
-	except:
-		return False
 
 #自动评论@我的微博
 def autoCommentAt():
@@ -158,10 +87,12 @@ if __name__ == '__main__':
 						break
 					code = p.sub(' ', code)
 					args = code.split(' ')
+					api = getAPI()
+					autopost = AutomaticPost.AutomaticPost(api, logging)
 					operation = {
-						'add': lambda x,y:add_auto_post_task(x,y),
+						'add': lambda x,y:autopost.add_task(x,y),
 						'del': lambda x,y:del_auto_post_task(x),
-						'show':lambda x,y:show_auto_post_task()
+						'show':lambda x,y:autopost.show_task()
 						}
 					while len(args)<3:
 						args.append(' ')
